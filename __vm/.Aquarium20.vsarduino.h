@@ -15,7 +15,6 @@
 #define _VSARDUINO_H_
 #define __ESP32_esp32__
 #define __ESP32_ESP32__
-#define _VMDEBUG 1
 #define ESP_PLATFORM
 #define HAVE_CONFIG_H
 #define GCC_NOT_5_2_0 0
@@ -107,11 +106,5 @@ typedef long pthread_cond_t;
 #define interrupts() sei()
 #define noInterrupts() cli()
 
-#include "AquariumPC2.1.ino"
-#include "Colorfade.ino"
-#include "Futterautomat.ino"
-#include "PowerLED.ino"
-#include "TFTDisplay.ino"
-#include "funktions.ino"
 #endif
 #endif

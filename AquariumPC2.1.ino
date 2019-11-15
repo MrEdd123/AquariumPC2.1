@@ -1,15 +1,1001 @@
-/*
- Name:		AquariumPC2.ino
- Created:	15.11.2019 18:25:17
- Author:	andre
-*/
+﻿
+#include <Arduino.h>
+#include <TFT_eSPI.h>
+#include <NeoPixelAnimator.h>
+#include <TimeAlarms.h>
+#include <HTTP_Method.h>
+#include <ArduinoOTA.h>
+#include "bitmaps.h"
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <BlynkSimpleEsp32.h>
+#include <Time.h>
+#include <SPI.h>
+#include <NeoPixelBrightnessBus.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
-// the setup function runs once when you press reset or power the board
+
+/*********** NeoPixel Einstellungen ***********/
+
+#define PIN_STRIPE1			13
+#define NUMLEDS					166
+
+NeoPixelBrightnessBus<NeoRgbwFeature, NeoEsp32Rmt0800KbpsMethod> strip1(NUMLEDS, PIN_STRIPE1);
+
+/************ TFT Einstellungen ***************/
+
+TFT_eSPI tft = TFT_eSPI();
+#define MAX_GEN_COUNT 500
+
+/************* One Wire (Tempfühler) **********/
+
+#define ONE_WIRE_BUS			26				// Anschlusspin für OneWire
+#define TEMPERATURE_PRECISION	9				// 0.25 Grad Genauigkeit
+OneWire oneWire(ONE_WIRE_BUS);					// One Wire Setup
+DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas Temperature.
+
+
+/**********************************************/
+
+
+/********** Blynk und WiFi Einstellungen ******/
+
+
+// You should get Auth Token in the Blynk App.
+// Go to the Project Settings (nut icon).
+//char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
+//const char* host = "aquarium-webupdate";
+
+/****** BETA Token *****************************/
+char auth[] = "b93c1e342a6c4217b466ec684e61679b";
+const char* host = "aquarium-webupdate-beta";
+
+char ssid[] = "Andre+Janina";
+char pass[] = "sommer12";
+
+char serverblynk[] = "blynk-cloud.com";
+unsigned int port = 8442;
+
+/*************** WEB Server für OTA **************/
+
+//const char* host = "aquarium-webupdate";
+
+WebServer server(80);
+const char* serverIndex = "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+"<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
+"<input type='file' name='update'>"
+"<input type='submit' value='Update'>"
+"</form>"
+"<div id='prg'>progress: 0%</div>"
+"<script>"
+"$('form').submit(function(e){"
+"e.preventDefault();"
+"var form = $('#upload_form')[0];"
+"var data = new FormData(form);"
+" $.ajax({"
+"url: '/update',"
+"type: 'POST',"
+"data: data,"
+"contentType: false,"
+"processData:false,"
+"xhr: function() {"
+"var xhr = new window.XMLHttpRequest();"
+"xhr.upload.addEventListener('progress', function(evt) {"
+"if (evt.lengthComputable) {"
+"var per = evt.loaded / evt.total;"
+"$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+"}"
+"}, false);"
+"return xhr;"
+"},"
+"success:function(d, s) {"
+"console.log('success!')"
+"},"
+"error: function (a, b, c) {"
+"}"
+"});"
+"});"
+"</script>";
+
+/******* Variablen *******************************/
+
+uint8_t TFTRotation;
+
+uint8_t SoAuStd = 10;
+uint8_t SoAuMin = 00;
+uint8_t SoAuZei;
+uint8_t SoUnStd = 20;
+uint8_t SoUnMin = 00;
+uint8_t SoUnZei;
+uint8_t SoNaStd = 22;
+uint8_t SoNaMin = 00;
+
+uint8_t SoMiAnStd = 13;
+uint8_t SoMiAnMin = 00;
+uint8_t SoMiAusStd = 15;
+uint8_t SoMiAusMin = 00;
+
+uint8_t FutterStd;
+uint8_t FutterMin;
+
+uint8_t maxHell = 250;
+uint8_t minHell;
+uint8_t mittagHell = 5;
+uint8_t aktHell;
+
+float_t SollTemp = 26.0;
+float_t IstTemp;
+float_t LuefTemp = 30.0;
+float_t Hysterese = 0.50;
+
+uint8_t CO2AnStd = 11;
+uint8_t CO2AnMin = 00;
+uint8_t CO2AusStd = 18;
+uint8_t CO2AusMin = 00;
+
+uint16_t Zeit;
+
+uint8_t AblaufX = 0;
+uint8_t AblaufY = 159;
+uint8_t AblaufI = 0;
+uint8_t AblaufBlynk;
+
+uint8_t BacklightPin = 22;
+uint16_t BacklightFrequenz = 500;
+uint8_t BacklightKanal = 2;
+uint8_t BacklightBit = 8;
+uint8_t BacklightWert = 100;
+
+uint8_t FutterPin = 14;
+uint16_t Futterfreq = 250;
+uint8_t FutterKanal = 0;
+uint8_t FutterRes = 8;
+uint16_t Futtergesch = 0;
+uint16_t Futterdauer = 1000;
+
+uint8_t PowerledPin = 16;
+uint16_t Powerledfreq = 500;
+uint8_t PowerledKanal = 1;
+uint8_t PowerledBit = 8;
+uint8_t Powerledwert = 100;
+
+uint8_t LEDRot;
+uint8_t LEDGruen;
+uint8_t LEDBlau;
+uint8_t LEDWeiss;
+
+unsigned long previousMillis = 0;
+
+/**************** Pin Belegung *******************/
+
+#define heizung				12      //Pin Relais Heizung
+#define luefter				25      //Pin Lüfter
+#define co2					27		//Pin Relais CO2 Abschaltung
+
+/**************** NeoPixel Init ******************/
+
+// Sonnenaufgang Color Array
+//				{ R, G , B, W }
+int SonAu1[4] = { 30,0,0,0 };
+int SonAu2[4] = { 150,5,0,0 };
+int SonAu3[4] = { 157,13,0,0 };
+int SonAu4[4] = { 163,21,1,0 };
+int SonAu5[4] = { 186,67,1,0 };
+int SonAu6[4] = { 240,180,30,100 };
+int SonAu7[4] = { 200,150,255,150 };
+
+// Sonnenuntergang Color Array
+//				{ R, G, B, W }
+int SonUn1[4] = { 250,200,100,40 };
+int SonUn2[4] = { 240,255,30,0 };
+int SonUn3[4] = { 186,68,2,0 };
+int SonUn4[4] = { 150,20,0,0 };
+int SonUn5[4] = { 50, 14,1, 0 };
+int SonUn6[4] = { 0, 0, 6, 0 };
+int SonUn7[4] = { 0, 0, 4, 0 };
+
+//Nachtlicht AUS Color Array
+//					 { R, G, B, W }
+int Nachtlicht1[4] = { 0, 0, 0, 0 };
+
+// Set initial color
+uint8_t redVal = 0;
+uint8_t grnVal = 0;
+uint8_t bluVal = 0;
+uint8_t whiteVal = 0;
+
+uint16_t DurchWait;
+uint16_t crossFadeWait;
+
+uint8_t prevR = redVal;
+uint8_t prevG = grnVal;
+uint8_t prevB = bluVal;
+uint8_t prevW = whiteVal;
+uint16_t LEDStep = 0;
+uint8_t Durchlauf = 1;
+uint8_t SonneIndex = 0;
+
+uint16_t StepWert = 1020;
+
+/***** NTP Server abrufen für Local Time ********/
+
+static const char ntpServerName[] = "de.pool.ntp.org";
+const int timeZone = 1;
+
+const uint32_t syncIntervalMax = 300; // could be the same value like the syncInterval in time.cpp | 300
+const uint32_t syncIntervalAfterFail = 60; // if sync with NTP fails, retry earlier | 60
+const uint32_t ntpWaitMax = 900; // maximum time in ms to wait for an answer of NTP Server, most used value 1500 I prefere below one second: 900
+uint32_t ntpWaitActual = ntpWaitMax; // optimized/reduced wait time, start with maximum.
+
+WiFiUDP Udp;
+unsigned int localPort = 8888;  // local port to listen for UDP packets
+
+const int NTP_PACKET_SIZE = 48;		// NTP time is in the first 48 bytes of message
+byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+
+time_t getNtpTime();
+void digitalClockDisplay();
+void sendNTPpacket(IPAddress& address);
+
+/***********************************************/
+
+/******** BLYNK FUNKTIONEN  ********************/
+
+WidgetLCD lcd(V127);
+WidgetLED ledluefter(V22);
+WidgetLED ledheizung(V23);
+WidgetLED ledco2(V24);
+WidgetLED led(V25);
+
+/******* LED Timer Sonne Auf/Untergang *******/
+
+BLYNK_WRITE(V0) {
+	TimeInputParam t(param);
+
+	// Process start time
+
+	if (t.hasStartTime())
+	{
+		SoAuStd = t.getStartHour();
+		SoAuMin = t.getStartMinute();
+	}
+
+	if (t.hasStopTime())
+	{
+		SoUnStd = t.getStopHour();
+		SoUnMin = t.getStopMinute();
+	}
+
+	//SunTimer();
+	tft.setTextSize(1);
+	tft.setCursor(24, 92);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	tft.print("Ein");
+	tft.setCursor(48, 92);
+	if (SoAuStd < 10)
+		tft.print("0");
+	tft.print(SoAuStd);
+	tft.print(":");
+	if (SoAuMin < 10)
+		tft.print("0");
+	tft.print(SoAuMin);
+
+	tft.setCursor(24, 102);
+	tft.print("Aus");
+	tft.setCursor(48, 102);
+	if (SoUnStd < 10)
+		tft.print("0");
+	tft.print(SoUnStd);
+	tft.print(":");
+	if (SoUnMin < 10)
+		tft.print("0");
+	tft.print(SoUnMin);
+}
+
+/*********** LED Timer Mittagssonne ************/
+
+BLYNK_WRITE(V6) {
+	TimeInputParam t(param);
+
+	if (t.hasStartTime())
+	{
+		SoMiAnStd = t.getStartHour();
+		SoMiAnMin = t.getStartMinute();
+
+	}
+
+	if (t.hasStopTime())
+	{
+		SoMiAusStd = t.getStopHour();
+		SoMiAusMin = t.getStopMinute();
+
+	}
+}
+
+/************ LED Timer Nachtlicht *****************/
+
+BLYNK_WRITE(V11) {
+
+	TimeInputParam t(param);
+
+	if (t.hasStartTime())
+	{
+		SoNaStd = t.getStartHour();
+		SoNaMin = t.getStartMinute();
+	}
+}
+
+/**************** CO2 Timer ******************/
+
+BLYNK_WRITE(V4) {
+	TimeInputParam t(param);
+
+	// Process start time
+
+	if (t.hasStartTime())
+	{
+		CO2AnStd = t.getStartHour();
+		CO2AnMin = t.getStartMinute();
+	}
+
+	if (t.hasStopTime())
+	{
+		CO2AusStd = t.getStopHour();
+		CO2AusMin = t.getStopMinute();
+	}
+
+	//CO2Timer();
+	tft.setTextSize(1);
+	tft.setCursor(24, 70);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	tft.print("Ein");
+	tft.setCursor(48, 70);
+	if (CO2AnStd < 10)
+		tft.print("0");
+	tft.print(CO2AnStd);
+	tft.print(":");
+	if (CO2AnMin < 10)
+		tft.print("0");
+	tft.print(CO2AnMin);
+
+	tft.setCursor(24, 80);
+	tft.print("Aus");
+	tft.setCursor(48, 80);
+	if (CO2AusStd < 10)
+		tft.print("0");
+	tft.print(CO2AusStd);
+	tft.print(":");
+	if (CO2AusMin < 10)
+		tft.print("0");
+	tft.print(CO2AusMin);
+}
+
+/*************** Soll Temperatur ***********/
+
+BLYNK_WRITE(V2) {
+
+	Blynk.virtualWrite(V1, param.asFloat());
+	SollTemp = param.asFloat();
+}
+
+/******** Luefter **************************/
+
+BLYNK_WRITE(V20) {
+
+	Blynk.virtualWrite(V20, param.asFloat());
+	LuefTemp = param.asFloat();
+}
+
+/************* Durchlauf Zeit *************/
+
+BLYNK_WRITE(V5) {
+
+	Blynk.virtualWrite(V5, param.asFloat());
+	DurchWait = param.asFloat();
+}
+
+/******* Futterautomat ********************/
+
+BLYNK_WRITE(V7) {
+
+	TimeInputParam t(param);
+
+	if (t.hasStartTime())
+	{
+		FutterStd = t.getStartHour();
+		FutterMin = t.getStartMinute();
+	}
+
+	//FutterTimer();
+	tft.setTextSize(1);
+	//tft.setCursor(104, 74);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	//tft.print("Ein");
+	tft.setCursor(120, 74);
+	if (FutterStd < 10)
+		tft.print("0");
+	tft.print(FutterStd);
+	tft.print(":");
+	if (FutterMin < 10)
+		tft.print("0");
+	tft.print(FutterMin);
+}
+
+BLYNK_WRITE(V34) {
+
+	Blynk.virtualWrite(V34, param.asFloat());
+	Futterdauer = param.asFloat();
+}
+
+BLYNK_WRITE(V35) {
+
+	Blynk.virtualWrite(V35, param.asFloat());
+	Futtergesch = param.asFloat();
+}
+
+/********** Temp Hysterese *****************/
+
+BLYNK_WRITE(V8) {
+
+	Blynk.virtualWrite(V8, param.asFloat());
+	Hysterese = param.asFloat();
+}
+
+/****** Maximale Helligkeit *****************/
+
+BLYNK_WRITE(V9) {
+
+	Blynk.virtualWrite(V9, param.asFloat());
+	maxHell = param.asFloat();
+}
+
+/******* Mittags Helligkeit *****************/
+
+BLYNK_WRITE(V25) {
+
+	Blynk.virtualWrite(V25, param.asFloat());
+	mittagHell = param.asFloat();
+}
+
+/******* Aktuelle Helligkeit *****************/
+
+BLYNK_WRITE(V28) {
+	Blynk.virtualWrite(V28, param.asFloat());
+	aktHell = param.asFloat();
+}
+
+/******** TFT Helligkeit ********************/
+
+BLYNK_WRITE(V10) {
+	Blynk.virtualWrite(V10, param.asFloat());
+	BacklightWert = param.asFloat();
+
+	ledcWrite(BacklightKanal, BacklightWert);
+}
+
+/****** TFT Rotation ************************/
+
+BLYNK_WRITE(V19) {
+
+	int i = param.asInt();
+	if (i == 1) {
+		TFTRotation = 3;
+		delay(250);
+	}
+	else
+		TFTRotation = 1;
+
+	//TFT_Layout();
+	/****** Display initalisieren mit Layout*****/
+
+	/******** Leiste Oben ***********/
+	tft.init();
+	tft.setRotation(TFTRotation);
+	tft.fillScreen(TFT_BLACK);
+	tft.drawLine(0, 20, 160, 20, TFT_GREEN);
+	tft.setTextColor(TFT_WHITE);
+	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+
+	tft.setTextColor(TFT_RED);
+	tft.drawString("0", 3, 2, 2);
+	tft.drawString("0", 12, 2, 2);
+	tft.drawString(":", 21, 2, 2);
+	tft.drawString("0", 25, 2, 2);
+	tft.drawString("0", 34, 2, 2);
+	tft.drawString(":", 43, 2, 2);
+	tft.drawString("0", 48, 2, 2);
+	tft.drawString("0", 57, 2, 2);
+
+
+	/******* Temperatur Fenster ***/
+	tft.drawRect(20, 25, 60, 20, TFT_WHITE);
+	tft.drawRect(80, 25, 80, 40, TFT_WHITE);
+	tft.drawRect(20, 45, 60, 20, TFT_WHITE);
+
+	tft.drawBitmap(0, 25, temp, 21, 40, TFT_WHITE);
+	tft.setTextColor(TFT_WHITE);
+	tft.drawString("Soll", 37, 31, 1);
+	tft.setCursor(63, 50);
+	tft.print(char(247));
+	tft.print("C");
+	tft.setCursor(143, 30);
+	tft.print(char(247));
+	tft.print("C");
+
+	/******** CO2 Fenster ***********/
+	tft.drawBitmap(0, 67, co2s, 21, 22, TFT_WHITE);
+	tft.drawRect(20, 67, 60, 22, TFT_WHITE);
+
+
+	/******** Sonne Fenster *********/
+	tft.drawBitmap(0, 90, sonne, 21, 22, TFT_WHITE);
+	tft.drawRect(20, 90, 60, 22, TFT_WHITE);
+
+	/******** Futterautomat Fenster *********/
+	tft.drawBitmap(80, 67, futter, 21, 22, TFT_WHITE);
+	tft.drawRect(100, 67, 60, 22, TFT_WHITE);
+
+	/******** Ablauf Fenster ********/
+
+	tft.drawRect(0, 115, 160, 13, TFT_WHITE);
+	//WIFI_TFT();
+	int wifi_ctr = 0;
+	while (WiFi.status() != WL_CONNECTED) {
+		delay(500);
+		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+	}
+	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
+
+	while (WiFi.status() == WL_CONNECTION_LOST) {
+
+		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+		WiFi.reconnect();
+	}
+
+	//CO2Timer();
+	tft.setTextSize(1);
+	tft.setCursor(24, 70);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	tft.print("Ein");
+	tft.setCursor(48, 70);
+	if (CO2AnStd < 10)
+		tft.print("0");
+	tft.print(CO2AnStd);
+	tft.print(":");
+	if (CO2AnMin < 10)
+		tft.print("0");
+	tft.print(CO2AnMin);
+
+	tft.setCursor(24, 80);
+	tft.print("Aus");
+	tft.setCursor(48, 80);
+	if (CO2AusStd < 10)
+		tft.print("0");
+	tft.print(CO2AusStd);
+	tft.print(":");
+	if (CO2AusMin < 10)
+		tft.print("0");
+	tft.print(CO2AusMin);
+	//SunTimer();
+	tft.setTextSize(1);
+	tft.setCursor(24, 92);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	tft.print("Ein");
+	tft.setCursor(48, 92);
+	if (SoAuStd < 10)
+		tft.print("0");
+	tft.print(SoAuStd);
+	tft.print(":");
+	if (SoAuMin < 10)
+		tft.print("0");
+	tft.print(SoAuMin);
+
+	tft.setCursor(24, 102);
+	tft.print("Aus");
+	tft.setCursor(48, 102);
+	if (SoUnStd < 10)
+		tft.print("0");
+	tft.print(SoUnStd);
+	tft.print(":");
+	if (SoUnMin < 10)
+		tft.print("0");
+	tft.print(SoUnMin);
+	//FutterTimer();
+	tft.setTextSize(1);
+	//tft.setCursor(104, 74);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+	//tft.print("Ein");
+	tft.setCursor(120, 74);
+	if (FutterStd < 10)
+		tft.print("0");
+	tft.print(FutterStd);
+	tft.print(":");
+	if (FutterMin < 10)
+		tft.print("0");
+	tft.print(FutterMin);
+}
+
+/************ Manuelle Funktionen ************/
+
+BLYNK_WRITE(V12) { /*Sonne An*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		SonneIndex = 1;
+		delay(250);
+	}
+}
+
+BLYNK_WRITE(V14) { /*Sonne Aus*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		SonneIndex = 2;
+		delay(250);
+	}
+}
+
+BLYNK_WRITE(V13) { /*Sonne Mittag AN*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		SonneIndex = 3;
+		delay(250);
+		SonneIndex = 0;
+	}
+}
+
+BLYNK_WRITE(V21) { /*Sonne Mittag Aus*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		SonneIndex = 4;
+		delay(250);
+		SonneIndex = 0;
+	}
+}
+
+BLYNK_WRITE(V15) { /*Nachlicht Aus*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		SonneIndex = 5;
+		delay(250);
+		SonneIndex = 0;
+	}
+}
+
+BLYNK_WRITE(V16) { /*Futterautomat*/
+
+	ledcWrite(FutterKanal, Futtergesch);
+
+	delay(Futterdauer);
+
+	ledcWrite(FutterKanal, 0);
+
+	Serial.println("Futterautomat");
+
+}
+
+BLYNK_WRITE(V17) { /*Luefter*/
+
+	int i = param.asInt();
+	if (i == 1) {
+		digitalWrite(luefter, HIGH);
+		ledluefter.on();
+		delay(250);
+	}
+}
+
+
+/********* PowerLED *****************/
+
+BLYNK_WRITE(V36) {
+	Blynk.virtualWrite(V36, param.asFloat());
+	Powerledwert = param.asFloat();
+
+	//ledcWrite(PowerledKanal, Powerledwert);
+
+	Serial.println("PowerLED");
+
+}
+
+/********* System Neustart **********/
+
+BLYNK_WRITE(V18) {
+
+	int i = param.asInt();
+	if (i == 1) {
+		ESP.restart();
+		delay(250);
+	}
+}
+
+/************* LED Farbe Manuell *******/
+
+BLYNK_WRITE(V29) {
+	Blynk.virtualWrite(V29, param.asFloat());
+	LEDRot = param.asFloat();
+
+}
+
+BLYNK_WRITE(V30) {
+	Blynk.virtualWrite(V30, param.asFloat());
+	LEDBlau = param.asFloat();
+
+}
+
+BLYNK_WRITE(V31) {
+	Blynk.virtualWrite(V31, param.asFloat());
+	LEDGruen = param.asFloat();
+
+}
+
+BLYNK_WRITE(V32) {
+	Blynk.virtualWrite(V32, param.asFloat());
+	LEDWeiss = param.asFloat();
+
+}
+
+BLYNK_WRITE(V33) {
+
+	int i = param.asInt();
+	if (i == 1) {
+		for (int i = 0; i < NUMLEDS; i++) {
+
+			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+		}
+	}
+}
+
+/*************************************************/
+
 void setup() {
 
+
+	Serial.begin(9600);
+
+	pinMode(heizung, OUTPUT);
+	pinMode(luefter, OUTPUT);
+	pinMode(co2, OUTPUT);
+
+	/******* Blynk LCD löschen ******************/
+
+	lcd.clear();
+
+	/********* TFT Layout setzen ***************/
+
+	TFT_Layout();
+
+	/*********** Neopixel Starten ***************/
+
+	strip1.Begin();
+	strip1.ClearTo(0);
+	strip1.SetPixelColor(10, RgbwColor(0, 0, 200, 0));
+	strip1.SetBrightness(250);
+	aktHell = maxHell;
+	strip1.Show();
+
+	/************ Tempfuehler *******************/
+
+	Tempfueh.begin();
+	Tempfueh.setResolution(10);
+
+	/******** TFT Backlight *******************/
+
+	ledcSetup(BacklightKanal, BacklightFrequenz, BacklightBit);	//ledcSetup(Kanal, Frequenz, Bit);
+	ledcAttachPin(BacklightPin, BacklightKanal);				//ledcAttachPin(Pin, Kanal);
+
+	/******** Futterautomat *******************/
+
+	ledcSetup(FutterKanal, Futterfreq, FutterRes);
+	ledcAttachPin(FutterPin, FutterKanal);
+
+	/******* PowerLED ************************/
+
+	ledcSetup(PowerledKanal, Powerledfreq, PowerledBit);
+	ledcAttachPin(PowerledPin, PowerledKanal);
+
+	///******** Blynk Verbinden / WIFI Verbinden **********/
+
+	Blynk.begin(auth, ssid, pass);
+
+	Blynk.syncAll();								  // Werte aus Blynk Cloud laden
+
+
+	/*************** WEB Server für OTA *******/
+
+	if (WiFi.waitForConnectResult() == WL_CONNECTED) {
+		MDNS.begin(host);
+		server.on("/", HTTP_GET, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/html", serverIndex);
+			});
+		server.on("/update", HTTP_POST, []() {
+			server.sendHeader("Connection", "close");
+			server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "Update OK Neustart!!");
+			ESP.restart();
+			}, []() {
+				HTTPUpload& upload = server.upload();
+				if (upload.status == UPLOAD_FILE_START) {
+					Serial.setDebugOutput(true);
+					Serial.printf("Update: %s\n", upload.filename.c_str());
+					if (!Update.begin()) { //start with max available size
+						Update.printError(Serial);
+					}
+				}
+				else if (upload.status == UPLOAD_FILE_WRITE) {
+					if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+						Update.printError(Serial);
+					}
+				}
+				else if (upload.status == UPLOAD_FILE_END) {
+					if (Update.end(true)) { //true to set the size to the current progress
+						Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+					}
+					else {
+						Update.printError(Serial);
+					}
+					Serial.setDebugOutput(false);
+				}
+			});
+		server.begin();
+		MDNS.addService("http", "tcp", 80);
+
+		Serial.printf("Ready! Open http://%s.local in your browser\n", host);
+	}
+	else {
+		Serial.println("WiFi Failed");
+	}
+
+
+	/******** Time Server Satr und setzen *****/
+
+	Udp.begin(localPort);
+	setSyncProvider(getNtpTime);
+	setSyncInterval(300);
+	digitalClockDisplay();
+
 }
 
-// the loop function runs over and over again until power down or reset
-void loop() {
-  
+time_t prevDisplay = 0;						// when the digital clock was displayed
+
+void reconnectBlynk() {
+	WIFI_TFT();
+
+	if (!Blynk.connected()) {
+		if (Blynk.connect()) {
+			tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
+		}
+		else {
+			tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+			delay(2);
+			Blynk.begin(auth, ssid, pass);
+		}
+	}
 }
+
+void loop() {
+
+	Blynk.run();
+
+	server.handleClient();
+
+	strip1.SetBrightness(aktHell);
+	strip1.Show();
+
+	/******* Timer für Abruf von Funktionen *********/
+
+	Alarm.delay(0);
+	Alarm.timerRepeat(1, digitalClockDisplay);
+	Alarm.timerRepeat(1, ProgrammTimer);
+	Alarm.timerRepeat(5, Heizung);
+	Alarm.timerRepeat(120, reconnectBlynk);
+
+	//PowerLED();
+
+	switch (SonneIndex) {
+
+	case 1:
+		SonneAuf();
+		break;
+	case 2:
+		SonneUn();
+		break;
+	case 3:
+		SonneMitAn();
+		break;
+	case 4:
+		SonneMitAus();
+		break;
+	case 5:
+		SonneNaAus();
+		break;
+	}
+
+}
+
+void ProgrammTimer() {
+	/*************** Timer Programme ******************/
+
+	uint32_t local_t = nowLocal();							//für Zeitumstellung nötig
+	Zeit = (minute(local_t)) + (hour(local_t) * 100);		//RTC zeit in vier stellig Umrechnen (z.B. 12:30 nach 1230)
+
+	uint16_t SoTimerAu;
+	SoTimerAu = ((SoAuMin)+(SoAuStd) * 100);
+
+	if ((Zeit == SoTimerAu) & (second(local_t) == 0))
+	{
+		SonneIndex = 1;
+	}
+
+	uint16_t SoTimerUn;
+	SoTimerUn = ((SoUnMin)+(SoUnStd) * 100);
+
+	if ((Zeit == SoTimerUn) & (second(local_t) == 0))
+	{
+		SonneIndex = 2;
+	}
+
+	uint16_t SoTimerMiAn;
+	SoTimerMiAn = ((SoMiAnMin)+(SoMiAnStd) * 100);
+	if ((Zeit == SoTimerMiAn) & (second(local_t) == 0))
+	{
+		SonneIndex = 3;
+	}
+
+	uint16_t SoTimerMiAus;
+	SoTimerMiAus = ((SoMiAusMin)+(SoMiAusStd) * 100);
+	if ((Zeit == SoTimerMiAus) & (second(local_t) == 0))
+	{
+		SonneIndex = 4;
+	}
+
+	uint16_t SoTimerNaAn;
+	SoTimerNaAn = ((SoNaMin)+(SoNaStd) * 100);
+	if ((Zeit == SoTimerNaAn) & (second(local_t) == 0))
+	{
+		SonneIndex = 5;
+	}
+
+	uint16_t FutterTimer;
+	FutterTimer = ((FutterMin)+(FutterStd) * 100);
+	if ((Zeit == FutterTimer) & (second(local_t) == 0))
+	{
+		Futterautomat();
+	}
+
+	uint16_t CO2AN;
+	uint16_t CO2AUS;
+	CO2AN = ((CO2AnMin)+(CO2AnStd) * 100);
+	CO2AUS = ((CO2AusMin)+(CO2AusStd) * 100);
+	if ((Zeit > (CO2AN - 1)) && (Zeit < CO2AUS))
+	{
+		digitalWrite(co2, HIGH);
+		ledco2.on();
+	}
+	else
+	{
+		digitalWrite(co2, LOW);
+		ledco2.off();
+	}
+}
+
+void WIFI_TFT() {
+	int wifi_ctr = 0;
+	while (WiFi.status() != WL_CONNECTED) {
+		delay(500);
+		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+	}
+	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
+
+	while (WiFi.status() == WL_CONNECTION_LOST) {
+
+		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+		WiFi.reconnect();
+	}
+}
+

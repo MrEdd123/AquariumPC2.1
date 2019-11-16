@@ -34,11 +34,11 @@ void SonneAuf()
 		case 7:
 			crossFade(SonAu7);
 			break;
-		case 8:
-			PowerLED();
-			break;
+		/*case 8:
+			PowerLEDplus();
+			break;*/
 
-		case 9:
+		case 8:
 
 				Durchlauf = 1;
 				SonneIndex = 0;

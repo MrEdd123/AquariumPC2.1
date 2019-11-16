@@ -5,7 +5,13 @@ VisualStudioVersion = 16.0.29509.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AquariumPC2.1", "AquariumPC2.1.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TFT_eSPI-1.4.20", "Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems", "{E7335752-D133-4B99-9176-BCA37ED583A5}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
+		Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems*{e7335752-d133-4b99-9176-bca37ed583a5}*SharedItemsImports = 9
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
 		Release|x86 = Release|x86

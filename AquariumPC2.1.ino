@@ -46,12 +46,12 @@ DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas 
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-//char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
-//const char* host = "aquarium-webupdate";
+char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
+const char* host = "aquarium-webupdate";
 
 /****** BETA Token *****************************/
-char auth[] = "b93c1e342a6c4217b466ec684e61679b";
-const char* host = "aquarium-webupdate-beta";
+//char auth[] = "b93c1e342a6c4217b466ec684e61679b";
+//const char* host = "aquarium-webupdate-beta";
 
 char ssid[] = "Andre+Janina";
 char pass[] = "sommer12";
@@ -157,10 +157,10 @@ uint16_t Futtergesch = 0;
 uint16_t Futterdauer = 1000;
 
 uint8_t PowerledPin = 16;
-uint16_t Powerledfreq = 500;
+uint16_t Powerledfreq = 1000;
 uint8_t PowerledKanal = 1;
 uint8_t PowerledBit = 8;
-uint8_t Powerledwert = 100;
+uint8_t Powerledwert;
 
 uint8_t LEDRot;
 uint8_t LEDGruen;
@@ -753,6 +753,9 @@ BLYNK_WRITE(V33) {
 
 /*************************************************/
 
+unsigned long currentMillis;
+
+/*************************************************/
 void setup() {
 
 
@@ -761,6 +764,14 @@ void setup() {
 	pinMode(heizung, OUTPUT);
 	pinMode(luefter, OUTPUT);
 	pinMode(co2, OUTPUT);
+
+	/**** Alarm Timer setzen für Funktionen ******/ 
+
+	Alarm.timerRepeat(1, digitalClockDisplay);
+	Alarm.timerRepeat(1, ProgrammTimer);
+	Alarm.timerRepeat(5, Heizung);
+	Alarm.timerRepeat(120, reconnectBlynk);
+	//Alarm.timerRepeat(2, PowerLED);
 
 	/******* Blynk LCD löschen ******************/
 
@@ -887,15 +898,11 @@ void loop() {
 	strip1.SetBrightness(aktHell);
 	strip1.Show();
 
-	/******* Timer für Abruf von Funktionen *********/
-
 	Alarm.delay(0);
-	Alarm.timerRepeat(1, digitalClockDisplay);
-	Alarm.timerRepeat(1, ProgrammTimer);
-	Alarm.timerRepeat(5, Heizung);
-	Alarm.timerRepeat(120, reconnectBlynk);
 
-	//PowerLED();
+	currentMillis = millis();
+
+	/******** Schalter für Beleuchtung ********/
 
 	switch (SonneIndex) {
 

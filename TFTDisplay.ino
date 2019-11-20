@@ -161,8 +161,8 @@ void FutterTimer() {
 	tft.print(FutterMin);
 }
 
-/*void WIFI_TFT()
-{
+
+void WIFI_TFT() {
 	int wifi_ctr = 0;
 	while (WiFi.status() != WL_CONNECTED) {
 		delay(500);
@@ -176,4 +176,3 @@ void FutterTimer() {
 		WiFi.reconnect();
 	}
 }
-*/

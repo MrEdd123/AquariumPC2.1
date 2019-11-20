@@ -1,4 +1,6 @@
 ﻿
+#define BLYNK_PRINT Serial
+
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <NeoPixelAnimator.h>
@@ -17,6 +19,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+
+BlynkTimer Timer;
 
 /*********** NeoPixel Einstellungen ***********/
 
@@ -46,15 +50,17 @@ DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas 
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
-const char* host = "aquarium-webupdate";
+//char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
+//const char* host = "aquarium-webupdate";
 
 /****** BETA Token *****************************/
-//char auth[] = "b93c1e342a6c4217b466ec684e61679b";
-//const char* host = "aquarium-webupdate-beta";
+char auth[] = "b93c1e342a6c4217b466ec684e61679b";
+const char* host = "aquarium-webupdate-beta";
 
-char ssid[] = "Andre+Janina";
+char ssid[] = "Andre+Janina-EXT";
 char pass[] = "sommer12";
+
+bool Connected2Blynk = false;
 
 char serverblynk[] = "blynk-cloud.com";
 unsigned int port = 8442;
@@ -103,6 +109,8 @@ const char* serverIndex = "<script src='https://ajax.googleapis.com/ajax/libs/jq
 /******* Variablen *******************************/
 
 uint8_t TFTRotation;
+
+uint8_t wifi_retry = 0;
 
 uint8_t SoAuStd = 10;
 uint8_t SoAuMin = 00;
@@ -161,6 +169,7 @@ uint16_t Powerledfreq = 1000;
 uint8_t PowerledKanal = 1;
 uint8_t PowerledBit = 8;
 uint8_t Powerledwert;
+uint8_t Powerledmax;
 
 uint8_t LEDRot;
 uint8_t LEDGruen;
@@ -269,30 +278,7 @@ BLYNK_WRITE(V0) {
 		SoUnMin = t.getStopMinute();
 	}
 
-	//SunTimer();
-	tft.setTextSize(1);
-	tft.setCursor(24, 92);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	tft.print("Ein");
-	tft.setCursor(48, 92);
-	if (SoAuStd < 10)
-		tft.print("0");
-	tft.print(SoAuStd);
-	tft.print(":");
-	if (SoAuMin < 10)
-		tft.print("0");
-	tft.print(SoAuMin);
-
-	tft.setCursor(24, 102);
-	tft.print("Aus");
-	tft.setCursor(48, 102);
-	if (SoUnStd < 10)
-		tft.print("0");
-	tft.print(SoUnStd);
-	tft.print(":");
-	if (SoUnMin < 10)
-		tft.print("0");
-	tft.print(SoUnMin);
+	SunTimer();
 }
 
 /*********** LED Timer Mittagssonne ************/
@@ -347,30 +333,7 @@ BLYNK_WRITE(V4) {
 		CO2AusMin = t.getStopMinute();
 	}
 
-	//CO2Timer();
-	tft.setTextSize(1);
-	tft.setCursor(24, 70);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	tft.print("Ein");
-	tft.setCursor(48, 70);
-	if (CO2AnStd < 10)
-		tft.print("0");
-	tft.print(CO2AnStd);
-	tft.print(":");
-	if (CO2AnMin < 10)
-		tft.print("0");
-	tft.print(CO2AnMin);
-
-	tft.setCursor(24, 80);
-	tft.print("Aus");
-	tft.setCursor(48, 80);
-	if (CO2AusStd < 10)
-		tft.print("0");
-	tft.print(CO2AusStd);
-	tft.print(":");
-	if (CO2AusMin < 10)
-		tft.print("0");
-	tft.print(CO2AusMin);
+	CO2Timer();
 }
 
 /*************** Soll Temperatur ***********/
@@ -409,19 +372,7 @@ BLYNK_WRITE(V7) {
 		FutterMin = t.getStartMinute();
 	}
 
-	//FutterTimer();
-	tft.setTextSize(1);
-	//tft.setCursor(104, 74);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	//tft.print("Ein");
-	tft.setCursor(120, 74);
-	if (FutterStd < 10)
-		tft.print("0");
-	tft.print(FutterStd);
-	tft.print(":");
-	if (FutterMin < 10)
-		tft.print("0");
-	tft.print(FutterMin);
+	FutterTimer();
 }
 
 BLYNK_WRITE(V34) {
@@ -460,6 +411,14 @@ BLYNK_WRITE(V25) {
 	mittagHell = param.asFloat();
 }
 
+/******* PowerLED Max Hellighkeit *********/
+
+BLYNK_WRITE(V36) {
+	Blynk.virtualWrite(V36, param.asFloat());
+	Powerledmax = param.asFloat();
+
+}
+
 /******* Aktuelle Helligkeit *****************/
 
 BLYNK_WRITE(V28) {
@@ -488,134 +447,16 @@ BLYNK_WRITE(V19) {
 	else
 		TFTRotation = 1;
 
-	//TFT_Layout();
-	/****** Display initalisieren mit Layout*****/
-
-	/******** Leiste Oben ***********/
-	tft.init();
-	tft.setRotation(TFTRotation);
-	tft.fillScreen(TFT_BLACK);
-	tft.drawLine(0, 20, 160, 20, TFT_GREEN);
-	tft.setTextColor(TFT_WHITE);
-	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
-
-	tft.setTextColor(TFT_RED);
-	tft.drawString("0", 3, 2, 2);
-	tft.drawString("0", 12, 2, 2);
-	tft.drawString(":", 21, 2, 2);
-	tft.drawString("0", 25, 2, 2);
-	tft.drawString("0", 34, 2, 2);
-	tft.drawString(":", 43, 2, 2);
-	tft.drawString("0", 48, 2, 2);
-	tft.drawString("0", 57, 2, 2);
-
-
-	/******* Temperatur Fenster ***/
-	tft.drawRect(20, 25, 60, 20, TFT_WHITE);
-	tft.drawRect(80, 25, 80, 40, TFT_WHITE);
-	tft.drawRect(20, 45, 60, 20, TFT_WHITE);
-
-	tft.drawBitmap(0, 25, temp, 21, 40, TFT_WHITE);
-	tft.setTextColor(TFT_WHITE);
-	tft.drawString("Soll", 37, 31, 1);
-	tft.setCursor(63, 50);
-	tft.print(char(247));
-	tft.print("C");
-	tft.setCursor(143, 30);
-	tft.print(char(247));
-	tft.print("C");
-
-	/******** CO2 Fenster ***********/
-	tft.drawBitmap(0, 67, co2s, 21, 22, TFT_WHITE);
-	tft.drawRect(20, 67, 60, 22, TFT_WHITE);
-
-
-	/******** Sonne Fenster *********/
-	tft.drawBitmap(0, 90, sonne, 21, 22, TFT_WHITE);
-	tft.drawRect(20, 90, 60, 22, TFT_WHITE);
-
-	/******** Futterautomat Fenster *********/
-	tft.drawBitmap(80, 67, futter, 21, 22, TFT_WHITE);
-	tft.drawRect(100, 67, 60, 22, TFT_WHITE);
-
-	/******** Ablauf Fenster ********/
-
-	tft.drawRect(0, 115, 160, 13, TFT_WHITE);
-	//WIFI_TFT();
-	int wifi_ctr = 0;
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
-	}
-	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
-
-	while (WiFi.status() == WL_CONNECTION_LOST) {
-
-		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
-		WiFi.reconnect();
-	}
-
-	//CO2Timer();
-	tft.setTextSize(1);
-	tft.setCursor(24, 70);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	tft.print("Ein");
-	tft.setCursor(48, 70);
-	if (CO2AnStd < 10)
-		tft.print("0");
-	tft.print(CO2AnStd);
-	tft.print(":");
-	if (CO2AnMin < 10)
-		tft.print("0");
-	tft.print(CO2AnMin);
-
-	tft.setCursor(24, 80);
-	tft.print("Aus");
-	tft.setCursor(48, 80);
-	if (CO2AusStd < 10)
-		tft.print("0");
-	tft.print(CO2AusStd);
-	tft.print(":");
-	if (CO2AusMin < 10)
-		tft.print("0");
-	tft.print(CO2AusMin);
-	//SunTimer();
-	tft.setTextSize(1);
-	tft.setCursor(24, 92);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	tft.print("Ein");
-	tft.setCursor(48, 92);
-	if (SoAuStd < 10)
-		tft.print("0");
-	tft.print(SoAuStd);
-	tft.print(":");
-	if (SoAuMin < 10)
-		tft.print("0");
-	tft.print(SoAuMin);
-
-	tft.setCursor(24, 102);
-	tft.print("Aus");
-	tft.setCursor(48, 102);
-	if (SoUnStd < 10)
-		tft.print("0");
-	tft.print(SoUnStd);
-	tft.print(":");
-	if (SoUnMin < 10)
-		tft.print("0");
-	tft.print(SoUnMin);
-	//FutterTimer();
-	tft.setTextSize(1);
-	//tft.setCursor(104, 74);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-	//tft.print("Ein");
-	tft.setCursor(120, 74);
-	if (FutterStd < 10)
-		tft.print("0");
-	tft.print(FutterStd);
-	tft.print(":");
-	if (FutterMin < 10)
-		tft.print("0");
-	tft.print(FutterMin);
+	TFT_Layout();
+	
+	WIFI_TFT();
+	
+	CO2Timer();
+	
+	SunTimer();
+	
+	FutterTimer();
+	
 }
 
 /************ Manuelle Funktionen ************/
@@ -676,8 +517,6 @@ BLYNK_WRITE(V16) { /*Futterautomat*/
 
 	ledcWrite(FutterKanal, 0);
 
-	Serial.println("Futterautomat");
-
 }
 
 BLYNK_WRITE(V17) { /*Luefter*/
@@ -691,19 +530,7 @@ BLYNK_WRITE(V17) { /*Luefter*/
 }
 
 
-/********* PowerLED *****************/
-
-BLYNK_WRITE(V36) {
-	Blynk.virtualWrite(V36, param.asFloat());
-	Powerledwert = param.asFloat();
-
-	//ledcWrite(PowerledKanal, Powerledwert);
-
-	Serial.println("PowerLED");
-
-}
-
-/********* System Neustart **********/
+/*********** System Neustart ************/
 
 BLYNK_WRITE(V18) {
 
@@ -761,25 +588,31 @@ void setup() {
 
 	Serial.begin(9600);
 
+	/********* TFT Layout setzen ***************/
+
+	TFT_Layout();
+
+	
+
 	pinMode(heizung, OUTPUT);
 	pinMode(luefter, OUTPUT);
 	pinMode(co2, OUTPUT);
 
+
 	/**** Alarm Timer setzen für Funktionen ******/ 
 
-	Alarm.timerRepeat(1, digitalClockDisplay);
-	Alarm.timerRepeat(1, ProgrammTimer);
-	Alarm.timerRepeat(5, Heizung);
-	Alarm.timerRepeat(120, reconnectBlynk);
-	//Alarm.timerRepeat(2, PowerLED);
+	//Alarm.timerRepeat(1, digitalClockDisplay);
+	//Alarm.timerRepeat(1, ProgrammTimer);
+	//Alarm.timerRepeat(5, Heizung);
+
+	Timer.setInterval(1000, digitalClockDisplay);
+	Timer.setInterval(1000, ProgrammTimer);
+	Timer.setInterval(5000, Heizung);
+	//Alarm.timerRepeat(120, reconnectBlynk);
 
 	/******* Blynk LCD löschen ******************/
 
 	lcd.clear();
-
-	/********* TFT Layout setzen ***************/
-
-	TFT_Layout();
 
 	/*********** Neopixel Starten ***************/
 
@@ -793,7 +626,7 @@ void setup() {
 	/************ Tempfuehler *******************/
 
 	Tempfueh.begin();
-	Tempfueh.setResolution(10);
+	//Tempfueh.setResolution(9);
 
 	/******** TFT Backlight *******************/
 
@@ -810,9 +643,11 @@ void setup() {
 	ledcSetup(PowerledKanal, Powerledfreq, PowerledBit);
 	ledcAttachPin(PowerledPin, PowerledKanal);
 
+	
 	///******** Blynk Verbinden / WIFI Verbinden **********/
+	WIFI_login();
 
-	Blynk.begin(auth, ssid, pass);
+	//Blynk.begin(auth, ssid, pass);
 
 	Blynk.syncAll();								  // Werte aus Blynk Cloud laden
 
@@ -889,19 +724,58 @@ void reconnectBlynk() {
 	}
 }
 
+
+void WIFI_login() {
+
+	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
+	Serial.print("U");
+	while (WiFi.status() != WL_CONNECTED && wifi_retry < 5) {
+		wifi_retry++;
+		WiFi.persistent(false);   // daten nicht in Flash speichern
+		WiFi.mode(WIFI_STA);
+		Serial.printf("Connecting to %s ", ssid);
+		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
+		WiFi.begin(ssid, pass);
+		Blynk.config(auth);
+		Blynk.connect();
+		while (WiFi.status() != WL_CONNECTED)
+		{
+			delay(500);
+			Serial.print(".");
+		}
+		
+		Serial.println(" connected");
+		Serial.print("local IP:");
+		Serial.println(WiFi.localIP());
+	}
+
+	if (wifi_retry >= 5) {
+		wifi_retry = 0;
+		Serial.println("\nReboot");
+		ESP.restart();
+	}
+
+}
+
+
 void loop() {
 
-	Blynk.run();
+	if (WiFi.status() != WL_CONNECTED) WIFI_login();
 
+	if (Blynk.connected()); 
+	{
+		Blynk.run();
+	}
+	//Blynk.run();
+	Timer.run();
 	server.handleClient();
 
 	strip1.SetBrightness(aktHell);
 	strip1.Show();
 
-	Alarm.delay(0);
-
 	currentMillis = millis();
 
+	
 	/******** Schalter für Beleuchtung ********/
 
 	switch (SonneIndex) {
@@ -991,18 +865,5 @@ void ProgrammTimer() {
 	}
 }
 
-void WIFI_TFT() {
-	int wifi_ctr = 0;
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
-	}
-	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
 
-	while (WiFi.status() == WL_CONNECTION_LOST) {
-
-		tft.drawBitmap(140, 0, wlan, 20, 20, TFT_RED);
-		WiFi.reconnect();
-	}
-}
 

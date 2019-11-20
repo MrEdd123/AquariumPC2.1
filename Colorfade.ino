@@ -34,11 +34,11 @@ void SonneAuf()
 		case 7:
 			crossFade(SonAu7);
 			break;
-		/*case 8:
-			PowerLEDplus();
-			break;*/
-
 		case 8:
+			PowerLEDplus();
+			break;
+
+		case 9:
 
 				Durchlauf = 1;
 				SonneIndex = 0;
@@ -49,7 +49,6 @@ void SonneAuf()
 		}
 
 	}
-
 
 void SonneUn()
 {
@@ -65,28 +64,33 @@ void SonneUn()
 
 	switch (Durchlauf)
 	{
+
 	case 1:
+		PowerLEDminus();
+		break;
+
+	case 2:
 		crossFade(SonUn1);
 		break;
-	case 2:
+	case 3:
 		crossFade(SonUn2);
 		break;
-	case 3:
+	case 4:
 		crossFade(SonUn3);
 		break;
-	case 4:
+	case 5:
 		crossFade(SonUn4);
 		break;
-	case 5:
+	case 6:
 		crossFade(SonUn5);
 		break;
-	case 6:
+	case 7:
 		crossFade(SonUn6);
 		break;
-	case 7:
+	case 8:
 		crossFade(SonUn7);
 		break;
-	case 8:
+	case 9:
 		for (int i = 0; i < 10; i++) {
 			
 				strip1.SetPixelColor(i, RgbwColor(0, 0, 0, 0));
@@ -110,7 +114,7 @@ void SonneUn()
 		Durchlauf++;
 		break;
 
-	case 9:
+	case 10:
 		Durchlauf = 1;
 		SonneIndex = 0; 
 		AblaufY = 159;
@@ -125,6 +129,7 @@ void SonneMitAn()
 	lcd.print(0, 0, "Mittagssonne AN");
 	strip1.SetBrightness(mittagHell);
 	aktHell = mittagHell;
+	PowerLEDminus();
 	strip1.Show();
 	lcd.print(0, 0, "                ");
 	SonneIndex = 0;
@@ -136,6 +141,7 @@ void SonneMitAus()
 	lcd.print(0, 0, "Mittagssonne AUS");
 	strip1.SetBrightness(maxHell);
 	aktHell = maxHell;
+	PowerLEDplus();
 	strip1.Show();
 	lcd.print(0, 0, "                ");
 	SonneIndex = 0;

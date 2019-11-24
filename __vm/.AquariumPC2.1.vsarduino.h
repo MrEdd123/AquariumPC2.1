@@ -110,8 +110,9 @@ typedef long pthread_cond_t;
 #include "AquariumPC2.1.ino"
 #include "Colorfade.ino"
 #include "Futterautomat.ino"
+#include "Heizung.ino"
 #include "PowerLED.ino"
 #include "TFTDisplay.ino"
-#include "funktions.ino"
+#include "ZeitServer.ino"
 #endif
 #endif

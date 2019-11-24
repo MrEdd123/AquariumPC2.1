@@ -1,5 +1,5 @@
 ﻿
-#define BLYNK_PRINT Serial
+//#define BLYNK_PRINT Serial
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
@@ -25,7 +25,7 @@ BlynkTimer Timer;
 /*********** NeoPixel Einstellungen ***********/
 
 #define PIN_STRIPE1			13
-#define NUMLEDS					166
+#define NUMLEDS				166
 
 NeoPixelBrightnessBus<NeoRgbwFeature, NeoEsp32Rmt0800KbpsMethod> strip1(NUMLEDS, PIN_STRIPE1);
 
@@ -50,12 +50,12 @@ DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas 
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-//char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
-//const char* host = "aquarium-webupdate";
+char auth[] = "06a15068bcdb4ae89620f5fd2e67c672";
+const char* host = "aquarium-webupdate";
 
 /****** BETA Token *****************************/
-char auth[] = "b93c1e342a6c4217b466ec684e61679b";
-const char* host = "aquarium-webupdate-beta";
+//char auth[] = "b93c1e342a6c4217b466ec684e61679b";
+//const char* host = "aquarium-webupdate-beta";
 
 char ssid[] = "Andre+Janina-EXT";
 char pass[] = "sommer12";
@@ -165,11 +165,11 @@ uint16_t Futtergesch = 0;
 uint16_t Futterdauer = 1000;
 
 uint8_t PowerledPin = 16;
-uint16_t Powerledfreq = 1000;
+uint16_t Powerledfreq = 2000;
 uint8_t PowerledKanal = 1;
 uint8_t PowerledBit = 8;
 uint8_t Powerledwert;
-uint8_t Powerledmax;
+uint8_t Powerledmax = 250;
 
 uint8_t LEDRot;
 uint8_t LEDGruen;
@@ -414,14 +414,15 @@ BLYNK_WRITE(V25) {
 /******* PowerLED Max Hellighkeit *********/
 
 BLYNK_WRITE(V36) {
+
 	Blynk.virtualWrite(V36, param.asFloat());
 	Powerledmax = param.asFloat();
-
 }
 
 /******* Aktuelle Helligkeit *****************/
 
 BLYNK_WRITE(V28) {
+
 	Blynk.virtualWrite(V28, param.asFloat());
 	aktHell = param.asFloat();
 }
@@ -429,6 +430,7 @@ BLYNK_WRITE(V28) {
 /******** TFT Helligkeit ********************/
 
 BLYNK_WRITE(V10) {
+
 	Blynk.virtualWrite(V10, param.asFloat());
 	BacklightWert = param.asFloat();
 
@@ -547,17 +549,31 @@ BLYNK_WRITE(V29) {
 	Blynk.virtualWrite(V29, param.asFloat());
 	LEDRot = param.asFloat();
 
+		for (int i = 0; i < NUMLEDS; i++) {
+
+			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+		}
 }
 
 BLYNK_WRITE(V30) {
 	Blynk.virtualWrite(V30, param.asFloat());
 	LEDBlau = param.asFloat();
+	
+		for (int i = 0; i < NUMLEDS; i++) {
 
+			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+		}
 }
 
 BLYNK_WRITE(V31) {
 	Blynk.virtualWrite(V31, param.asFloat());
 	LEDGruen = param.asFloat();
+	
+		for (int i = 0; i < NUMLEDS; i++) {
+
+			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+		}
+	
 
 }
 
@@ -565,17 +581,17 @@ BLYNK_WRITE(V32) {
 	Blynk.virtualWrite(V32, param.asFloat());
 	LEDWeiss = param.asFloat();
 
-}
-
-BLYNK_WRITE(V33) {
-
-	int i = param.asInt();
-	if (i == 1) {
 		for (int i = 0; i < NUMLEDS; i++) {
 
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
 		}
-	}
+}
+
+BLYNK_WRITE(V37 ) {
+	uint8_t Powerledmanu;
+	Blynk.virtualWrite(V37, param.asFloat());
+	Powerledmanu = param.asFloat();
+	ledcWrite(PowerledKanal, Powerledmanu);
 }
 
 /*************************************************/
@@ -729,7 +745,7 @@ void WIFI_login() {
 
 	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
 	Serial.print("U");
-	while (WiFi.status() != WL_CONNECTED && wifi_retry < 5) {
+	while (WiFi.status() != WL_CONNECTED && wifi_retry <= 5) {
 		wifi_retry++;
 		WiFi.persistent(false);   // daten nicht in Flash speichern
 		WiFi.mode(WIFI_STA);
@@ -750,7 +766,7 @@ void WIFI_login() {
 	}
 
 	if (wifi_retry >= 5) {
-		wifi_retry = 0;
+		wifi_retry == 0;
 		Serial.println("\nReboot");
 		ESP.restart();
 	}
@@ -760,13 +776,7 @@ void WIFI_login() {
 
 void loop() {
 
-	if (WiFi.status() != WL_CONNECTED) WIFI_login();
-
-	if (Blynk.connected()); 
-	{
-		Blynk.run();
-	}
-	//Blynk.run();
+	Blynk.run();
 	Timer.run();
 	server.handleClient();
 

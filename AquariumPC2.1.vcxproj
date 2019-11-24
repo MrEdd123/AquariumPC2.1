@@ -114,8 +114,11 @@
   <ItemGroup>
     <None Include="AquariumPC2.1.ino" />
     <None Include="Colorfade.ino" />
-    <None Include="funktions.ino" />
+    <None Include="ZeitServer.ino" />
     <None Include="Futterautomat.ino" />
+    <None Include="Heizung.ino">
+      <FileType>CppCode</FileType>
+    </None>
     <None Include="PowerLED.ino" />
     <None Include="TFTDisplay.ino" />
   </ItemGroup>

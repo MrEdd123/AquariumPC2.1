@@ -14,32 +14,40 @@ void SonneAuf()
 		switch (Durchlauf)
 		{
 		case 1:
+			Serial.println("Case1");
 			crossFade(SonAu1);
 			break;
 		case 2:
+			Serial.println("Case2");
 			crossFade(SonAu2);
 			break;
 		case 3:
+			Serial.println("Case3");
 			crossFade(SonAu3);
 			break;
 		case 4:
+			Serial.println("Case4");
 			crossFade(SonAu4);
 			break;
 		case 5:
+			Serial.println("Case5");
 			crossFade(SonAu5);
 			break;
 		case 6:
+			Serial.println("Case6");
 			crossFade(SonAu6);
 			break;
 		case 7:
+			Serial.println("Case7");
 			crossFade(SonAu7);
 			break;
 		case 8:
+			Serial.println("Case8 PowerLED");
 			PowerLEDplus();
 			break;
 
 		case 9:
-
+			Serial.println("Case9 Ende");
 				Durchlauf = 1;
 				SonneIndex = 0;
 				AblaufX = 1;
@@ -68,7 +76,6 @@ void SonneUn()
 	case 1:
 		PowerLEDminus();
 		break;
-
 	case 2:
 		crossFade(SonUn1);
 		break;
@@ -123,28 +130,46 @@ void SonneUn()
 	}
 }
 
-void SonneMitAn() 
+void SonneMitAn()
 {
 
 	lcd.print(0, 0, "Mittagssonne AN");
 	strip1.SetBrightness(mittagHell);
 	aktHell = mittagHell;
-	PowerLEDminus();
-	strip1.Show();
-	lcd.print(0, 0, "                ");
-	SonneIndex = 0;
+	//PowerLEDminus();
+	uint8_t PowerLEDFade;
+	PowerLEDFade = DurchWait * 50;
+	if (currentMillis - previousMillis > PowerLEDFade) {
+		previousMillis = currentMillis;
+		if (Powerledwert >= 0) {
+			Powerledwert--;
+			ledcWrite(PowerledKanal, Powerledwert);
+		}
+		strip1.Show();
+		lcd.print(0, 0, "                ");
+		SonneIndex = 0;
+	}
 }
 
-void SonneMitAus() 
+void SonneMitAus()
 {
 
 	lcd.print(0, 0, "Mittagssonne AUS");
 	strip1.SetBrightness(maxHell);
 	aktHell = maxHell;
-	PowerLEDplus();
-	strip1.Show();
-	lcd.print(0, 0, "                ");
-	SonneIndex = 0;
+	//PowerLEDplus();
+	uint8_t PowerLEDFade;
+	PowerLEDFade = DurchWait * 50;
+	if (currentMillis - previousMillis > PowerLEDFade) {
+		previousMillis = currentMillis;
+		if (Powerledwert <= Powerledmax) {
+			Powerledwert++;
+			ledcWrite(PowerledKanal, Powerledwert);
+		}
+		strip1.Show();
+		lcd.print(0, 0, "                ");
+		SonneIndex = 0;
+	}
 }
 
 void SonneNaAus()

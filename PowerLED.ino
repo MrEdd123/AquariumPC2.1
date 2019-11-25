@@ -1,7 +1,7 @@
 void PowerLEDplus()
 {
 	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 50;
+	PowerLEDFade = DurchWait * 250;
 		if (currentMillis - previousMillis > PowerLEDFade) {
 		previousMillis = currentMillis;
 			if (Powerledwert <= Powerledmax) {
@@ -21,7 +21,7 @@ void PowerLEDplus()
 void PowerLEDminus()
 {
 	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 50;
+	PowerLEDFade = DurchWait * 250;
 	if (currentMillis - previousMillis > PowerLEDFade) {
 		previousMillis = currentMillis;
 		if (Powerledwert >= 0) {

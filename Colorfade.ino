@@ -1,6 +1,7 @@
 
 void SonneAuf()
 {
+	ledcWrite(BacklightKanalTFT, BacklightwertTag);
 	lcd.print(0, 0, "Sonnenaufgang");
 	AblaufI ++;
 	
@@ -60,6 +61,7 @@ void SonneAuf()
 
 void SonneUn()
 {
+	ledcWrite(BacklightKanalTFT, BacklightwertNacht);
 	lcd.print(0, 0, "Sonnenuntergang");
 	AblaufI ++;
 	
@@ -132,44 +134,35 @@ void SonneUn()
 
 void SonneMitAn()
 {
-
+	Serial.println("Sonne Mittag AN");
 	lcd.print(0, 0, "Mittagssonne AN");
 	strip1.SetBrightness(mittagHell);
+	strip1.Show();
 	aktHell = mittagHell;
 	//PowerLEDminus();
-	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 50;
-	if (currentMillis - previousMillis > PowerLEDFade) {
-		previousMillis = currentMillis;
-		if (Powerledwert >= 0) {
-			Powerledwert--;
-			ledcWrite(PowerledKanal, Powerledwert);
-		}
-		strip1.Show();
-		lcd.print(0, 0, "                ");
-		SonneIndex = 0;
+
+	for (int i = 3; Powerledwert > i; Powerledwert--)
+	{
+		ledcWrite(PowerledKanal, Powerledwert);
 	}
+	lcd.print(0, 0, "                ");
+	SonneIndex = 0;
 }
 
 void SonneMitAus()
 {
-
+	Serial.println("Sonne Mittag Aus");
 	lcd.print(0, 0, "Mittagssonne AUS");
 	strip1.SetBrightness(maxHell);
+	strip1.Show();
 	aktHell = maxHell;
-	//PowerLEDplus();
-	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 50;
-	if (currentMillis - previousMillis > PowerLEDFade) {
-		previousMillis = currentMillis;
-		if (Powerledwert <= Powerledmax) {
-			Powerledwert++;
-			ledcWrite(PowerledKanal, Powerledwert);
-		}
-		strip1.Show();
-		lcd.print(0, 0, "                ");
-		SonneIndex = 0;
+	//PowerLEDplus();	
+	for (int i = Powerledmax; Powerledwert < i; Powerledwert++) 
+	{
+		ledcWrite(PowerledKanal, Powerledwert);
 	}
+	lcd.print(0, 0, "                ");
+	SonneIndex = 0;
 }
 
 void SonneNaAus()

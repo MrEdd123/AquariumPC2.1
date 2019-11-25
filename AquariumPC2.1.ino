@@ -153,9 +153,10 @@ uint8_t AblaufBlynk;
 
 uint8_t BacklightPin = 22;
 uint16_t BacklightFrequenz = 500;
-uint8_t BacklightKanal = 2;
+uint8_t BacklightKanalTFT = 2;
 uint8_t BacklightBit = 8;
-uint8_t BacklightWert = 100;
+uint8_t BacklightwertTag = 100;
+uint8_t BacklightwertNacht = 100;
 
 uint8_t FutterPin = 14;
 uint16_t Futterfreq = 250;
@@ -432,9 +433,15 @@ BLYNK_WRITE(V28) {
 BLYNK_WRITE(V10) {
 
 	Blynk.virtualWrite(V10, param.asFloat());
-	BacklightWert = param.asFloat();
+	BacklightwertTag = param.asFloat();
+	ledcWrite(BacklightKanalTFT, BacklightwertTag);
+}
 
-	ledcWrite(BacklightKanal, BacklightWert);
+BLYNK_WRITE(V33) {
+
+	Blynk.virtualWrite(V33, param.asFloat());
+	BacklightwertNacht = param.asFloat();
+	//ledcWrite(BacklightKanalTFT, BacklightwertNacht);
 }
 
 /****** TFT Rotation ************************/
@@ -485,9 +492,9 @@ BLYNK_WRITE(V13) { /*Sonne Mittag AN*/
 
 	int i = param.asInt();
 	if (i == 1) {
-		SonneIndex = 3;
+		SonneMitAn();
 		delay(250);
-		SonneIndex = 0;
+		
 	}
 }
 
@@ -495,9 +502,9 @@ BLYNK_WRITE(V21) { /*Sonne Mittag Aus*/
 
 	int i = param.asInt();
 	if (i == 1) {
-		SonneIndex = 4;
+		SonneMitAus();
 		delay(250);
-		SonneIndex = 0;
+		
 	}
 }
 
@@ -646,8 +653,8 @@ void setup() {
 
 	/******** TFT Backlight *******************/
 
-	ledcSetup(BacklightKanal, BacklightFrequenz, BacklightBit);	//ledcSetup(Kanal, Frequenz, Bit);
-	ledcAttachPin(BacklightPin, BacklightKanal);				//ledcAttachPin(Pin, Kanal);
+	ledcSetup(BacklightKanalTFT, BacklightFrequenz, BacklightBit);	//ledcSetup(Kanal, Frequenz, Bit);
+	ledcAttachPin(BacklightPin, BacklightKanalTFT);					//ledcAttachPin(Pin, Kanal);
 
 	/******** Futterautomat *******************/
 
@@ -744,7 +751,7 @@ void reconnectBlynk() {
 void WIFI_login() {
 
 	tft.drawBitmap(140, 0, wlan, 20, 20, TFT_GREEN);
-	Serial.print("U");
+	Serial.println("WiFi Login");
 	while (WiFi.status() != WL_CONNECTED && wifi_retry <= 5) {
 		wifi_retry++;
 		WiFi.persistent(false);   // daten nicht in Flash speichern

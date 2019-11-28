@@ -5,7 +5,7 @@ void SonneAuf()
 	lcd.print(0, 0, "Sonnenaufgang");
 	AblaufI ++;
 	
-	if (AblaufI >= 46) {
+	if (AblaufI >= 100) {
 		AblaufX ++;
 		AblaufI = 0;
 		tft.drawFastVLine(AblaufX, 116, 11, TFT_WHITE);
@@ -65,7 +65,7 @@ void SonneUn()
 	lcd.print(0, 0, "Sonnenuntergang");
 	AblaufI ++;
 	
-	if (AblaufI >= 48) {
+	if (AblaufI >= 102) {
 		AblaufY --;
 		AblaufI = 0;
 		tft.drawFastVLine(AblaufY, 116, 11, TFT_BLACK);
@@ -257,7 +257,6 @@ void crossFade(int color[4])
 			prevB = bluVal;
 			prevW = whiteVal;
 
-			//delay(DurchWait);
 			strip1.Show();
 
 			crossFadeWait = DurchWait;

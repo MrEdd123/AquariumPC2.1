@@ -2,10 +2,11 @@
 
 void Heizung() {
 
-	portDISABLE_INTERRUPTS();
+	//portDISABLE_INTERRUPTS();
 	Tempfueh.requestTemperatures();
 	IstTemp = (Tempfueh.getTempCByIndex(0));
-	portENABLE_INTERRUPTS();
+	//Serial.println(IstTemp);
+	//portENABLE_INTERRUPTS();
 	lcd.print(0, 1, IstTemp);
 	//lcd.print(6, 1, "C");
 	//lcd.print(7, 1,(char)178);

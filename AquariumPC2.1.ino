@@ -37,7 +37,7 @@ TFT_eSPI tft = TFT_eSPI();
 /************* One Wire (Tempfühler) **********/
 
 #define ONE_WIRE_BUS			26				// Anschlusspin für OneWire
-#define TEMPERATURE_PRECISION	9				// 0.25 Grad Genauigkeit
+//#define TEMPERATURE_PRECISION	11				
 OneWire oneWire(ONE_WIRE_BUS);					// One Wire Setup
 DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas Temperature.
 
@@ -177,6 +177,8 @@ uint8_t LEDGruen;
 uint8_t LEDBlau;
 uint8_t LEDWeiss;
 
+
+unsigned long currentMillis;
 unsigned long previousMillis = 0;
 
 /**************** Pin Belegung *******************/
@@ -194,8 +196,8 @@ int SonAu2[4] = { 150,5,0,0 };
 int SonAu3[4] = { 157,13,0,0 };
 int SonAu4[4] = { 163,21,1,0 };
 int SonAu5[4] = { 186,67,1,0 };
-int SonAu6[4] = { 240,180,30,100 };
-int SonAu7[4] = { 200,150,255,150 };
+int SonAu6[4] = { 240,120,30,100 };
+int SonAu7[4] = { 230,100,200,200 };
 
 // Sonnenuntergang Color Array
 //				{ R, G, B, W }
@@ -520,11 +522,18 @@ BLYNK_WRITE(V15) { /*Nachlicht Aus*/
 
 BLYNK_WRITE(V16) { /*Futterautomat*/
 
-	ledcWrite(FutterKanal, Futtergesch);
+
+	int i = param.asInt();
+	if (i == 1) {
+
+		Futterautomat();
+	}
+	
+	/*ledcWrite(FutterKanal, Futtergesch);
 
 	delay(Futterdauer);
 
-	ledcWrite(FutterKanal, 0);
+	ledcWrite(FutterKanal, 0);*/
 
 }
 
@@ -556,30 +565,30 @@ BLYNK_WRITE(V29) {
 	Blynk.virtualWrite(V29, param.asFloat());
 	LEDRot = param.asFloat();
 
-		for (int i = 0; i < NUMLEDS; i++) {
+		/*for (int i = 0; i < NUMLEDS; i++) {
 
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
-		}
+		}*/
 }
 
 BLYNK_WRITE(V30) {
 	Blynk.virtualWrite(V30, param.asFloat());
 	LEDBlau = param.asFloat();
-	
+	/*
 		for (int i = 0; i < NUMLEDS; i++) {
 
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
-		}
+		}*/
 }
 
 BLYNK_WRITE(V31) {
 	Blynk.virtualWrite(V31, param.asFloat());
 	LEDGruen = param.asFloat();
 	
-		for (int i = 0; i < NUMLEDS; i++) {
+		/*for (int i = 0; i < NUMLEDS; i++) {
 
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
-		}
+		}*/
 	
 
 }
@@ -588,10 +597,10 @@ BLYNK_WRITE(V32) {
 	Blynk.virtualWrite(V32, param.asFloat());
 	LEDWeiss = param.asFloat();
 
-		for (int i = 0; i < NUMLEDS; i++) {
+		/*for (int i = 0; i < NUMLEDS; i++) {
 
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
-		}
+		}*/
 }
 
 BLYNK_WRITE(V37 ) {
@@ -601,9 +610,19 @@ BLYNK_WRITE(V37 ) {
 	ledcWrite(PowerledKanal, Powerledmanu);
 }
 
+BLYNK_WRITE(V38) {
+
+	int i = param.asInt();
+	if (i == 1) {
+		for (int i = 0; i < NUMLEDS; i++) {
+			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+		}	
+	}
+}
+
 /*************************************************/
 
-unsigned long currentMillis;
+
 
 /*************************************************/
 void setup() {
@@ -631,6 +650,7 @@ void setup() {
 	Timer.setInterval(1000, digitalClockDisplay);
 	Timer.setInterval(1000, ProgrammTimer);
 	Timer.setInterval(5000, Heizung);
+	Timer.setInterval(20000, WIFI_login);
 	//Alarm.timerRepeat(120, reconnectBlynk);
 
 	/******* Blynk LCD löschen ******************/
@@ -649,7 +669,7 @@ void setup() {
 	/************ Tempfuehler *******************/
 
 	Tempfueh.begin();
-	//Tempfueh.setResolution(9);
+	Tempfueh.setResolution(12);			// 0.25 Grad Genauigkeit
 
 	/******** TFT Backlight *******************/
 

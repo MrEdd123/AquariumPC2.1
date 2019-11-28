@@ -1,9 +1,10 @@
 void PowerLEDplus()
 {
-	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 250;
+	uint16_t PowerLEDFade;
+	PowerLEDFade = DurchWait * 50;
+	
 		if (currentMillis - previousMillis > PowerLEDFade) {
-		previousMillis = currentMillis;
+			previousMillis = currentMillis;
 			if (Powerledwert <= Powerledmax) {
 				Powerledwert++;
 				ledcWrite(PowerledKanal, Powerledwert);
@@ -15,13 +16,16 @@ void PowerLEDplus()
 
 			Serial.print("PowerLED++ ");
 			Serial.println(Powerledwert);	
+			Serial.print(DurchWait);
+			Serial.print("  ");
+			Serial.println(PowerLEDFade);
 		}
 }
 
 void PowerLEDminus()
 {
-	uint8_t PowerLEDFade;
-	PowerLEDFade = DurchWait * 250;
+	uint16_t PowerLEDFade;
+	PowerLEDFade = DurchWait * 50;
 	if (currentMillis - previousMillis > PowerLEDFade) {
 		previousMillis = currentMillis;
 		if (Powerledwert >= 0) {

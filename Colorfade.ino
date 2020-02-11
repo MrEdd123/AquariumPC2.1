@@ -141,10 +141,12 @@ void SonneMitAn()
 	aktHell = mittagHell;
 	//PowerLEDminus();
 
-	for (int i = 3; Powerledwert > i; Powerledwert--)
+	/*for (int i = Powerledmin; Powerledwert > i; Powerledwert--)
 	{
 		ledcWrite(PowerledKanal, Powerledwert);
-	}
+	}*/
+	Powerledwert = Powerledmin;
+	ledcWrite(PowerledKanal, Powerledwert);
 	lcd.print(0, 0, "                ");
 	SonneIndex = 0;
 }
@@ -157,10 +159,12 @@ void SonneMitAus()
 	strip1.Show();
 	aktHell = maxHell;
 	//PowerLEDplus();	
-	for (int i = Powerledmax; Powerledwert < i; Powerledwert++) 
+	/*for (int i = Powerledmax; Powerledwert < i; Powerledwert++) 
 	{
 		ledcWrite(PowerledKanal, Powerledwert);
-	}
+	}*/
+	Powerledwert = Powerledmax;
+	ledcWrite(PowerledKanal, Powerledwert);
 	lcd.print(0, 0, "                ");
 	SonneIndex = 0;
 }

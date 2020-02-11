@@ -20,8 +20,6 @@
 #include <DallasTemperature.h>
 
 
-BlynkTimer Timer;
-
 /*********** NeoPixel Einstellungen ***********/
 
 #define PIN_STRIPE1			13
@@ -36,8 +34,7 @@ TFT_eSPI tft = TFT_eSPI();
 
 /************* One Wire (Tempfühler) **********/
 
-#define ONE_WIRE_BUS			26				// Anschlusspin für OneWire
-//#define TEMPERATURE_PRECISION	11				
+#define ONE_WIRE_BUS			26				// Anschlusspin für OneWire			
 OneWire oneWire(ONE_WIRE_BUS);					// One Wire Setup
 DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas Temperature.
 
@@ -47,6 +44,7 @@ DallasTemperature Tempfueh(&oneWire);			// Pass our oneWire reference to Dallas 
 
 /********** Blynk und WiFi Einstellungen ******/
 
+BlynkTimer Timer;
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
@@ -108,7 +106,7 @@ const char* serverIndex = "<script src='https://ajax.googleapis.com/ajax/libs/jq
 
 /******* Variablen *******************************/
 
-uint8_t TFTRotation;
+uint8_t TFTRotation = 3;
 
 uint8_t wifi_retry = 0;
 
@@ -126,18 +124,18 @@ uint8_t SoMiAnMin = 00;
 uint8_t SoMiAusStd = 15;
 uint8_t SoMiAusMin = 00;
 
-uint8_t FutterStd;
-uint8_t FutterMin;
+uint8_t FutterStd = 19;
+uint8_t FutterMin = 00;
 
 uint8_t maxHell = 250;
 uint8_t minHell;
 uint8_t mittagHell = 5;
-uint8_t aktHell;
+uint8_t aktHell = 200;
 
-float_t SollTemp = 26.0;
+float_t SollTemp = 25.0;
 float_t IstTemp;
 float_t LuefTemp = 30.0;
-float_t Hysterese = 0.50;
+float_t Hysterese = 0.30;
 
 uint8_t CO2AnStd = 11;
 uint8_t CO2AnMin = 00;
@@ -169,8 +167,9 @@ uint8_t PowerledPin = 16;
 uint16_t Powerledfreq = 2000;
 uint8_t PowerledKanal = 1;
 uint8_t PowerledBit = 8;
-uint8_t Powerledwert;
+uint8_t Powerledwert = 0;
 uint8_t Powerledmax = 250;
+uint8_t Powerledmin = 0;
 
 uint8_t LEDRot;
 uint8_t LEDGruen;
@@ -604,10 +603,10 @@ BLYNK_WRITE(V32) {
 }
 
 BLYNK_WRITE(V37 ) {
-	uint8_t Powerledmanu;
+	//uint8_t Powerledmanu;
 	Blynk.virtualWrite(V37, param.asFloat());
-	Powerledmanu = param.asFloat();
-	ledcWrite(PowerledKanal, Powerledmanu);
+	Powerledwert = param.asFloat();
+	
 }
 
 BLYNK_WRITE(V38) {
@@ -616,6 +615,7 @@ BLYNK_WRITE(V38) {
 	if (i == 1) {
 		for (int i = 0; i < NUMLEDS; i++) {
 			strip1.SetPixelColor(i, RgbwColor(LEDGruen, LEDRot, LEDBlau, LEDWeiss));
+			ledcWrite(PowerledKanal, Powerledwert);
 		}	
 	}
 }

@@ -7,8 +7,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AquariumPC2.1", "AquariumPC
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TFT_eSPI-1.4.20", "Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems", "{E7335752-D133-4B99-9176-BCA37ED583A5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArduinoOTA-1.0", "Libraries\ArduinoOTA\1.0\ArduinoOTA\ArduinoOTA-1.0.vcxitems", "{2290E0B4-FFF5-430F-B949-78BD4459F5E9}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Libraries\ArduinoOTA\1.0\ArduinoOTA\ArduinoOTA-1.0.vcxitems*{2290e0b4-fff5-430f-b949-78bd4459f5e9}*SharedItemsImports = 9
+		Libraries\ArduinoOTA\1.0\ArduinoOTA\ArduinoOTA-1.0.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
 		Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems*{c5f80730-f44f-4478-bdae-6634efc2ca88}*SharedItemsImports = 4
 		Libraries\TFT_eSPI\1.4.20\TFT_eSPI\TFT_eSPI-1.4.20.vcxitems*{e7335752-d133-4b99-9176-bca37ed583a5}*SharedItemsImports = 9
 	EndGlobalSection
